@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 const shorthash = require('shorthash');
+const jwt = require('jsonwebtoken');
 const Schema = mongoose.Schema;
 
 let urlSchema = new Schema({
@@ -32,19 +33,33 @@ let urlSchema = new Schema({
     createdDate:{
         type: Date,
         default: Date.now()
-    }
+    },
+    tokens:[{
+        token:{
+            type: String
+        }
+    }]
 });
-
-
 
 urlSchema.pre('validate', function(next){
-    console.log('in');
-    let url = this.originalUrl;
-    console.log('i am in', url);
-    this.hashedUrl = shorthash.unique(url);
-    console.log('i am in', this);
+    if (this.isNew){
+        let url = this.originalUrl;
+        this.hashedUrl = shorthash.unique(url);
+    }
     next();
 });
+
+urlSchema.methods.generateToken = function(next){
+    let url = this;
+    let tokenData = {
+        _id: url._id
+    }
+    let token  = jwt.sign(tokenData, 'supersecret');
+    url.tokens.push({token});
+    return url.save().then(()=>{
+        return token;
+    })
+}
 let Url  = mongoose.model('Url', urlSchema);
 module.exports = {
     Url

@@ -42,12 +42,15 @@ router.get('/:id', validateId, (req, res)=>{
 })
 
 //create a new url, post, localhost:4000/urls
-router.post('/', (req, res)=>{
+router.post('/', function(req, res){
     let currentUrl = new Url(req.body);
-    console.log('in controller', currentUrl);
     currentUrl.save().then((url)=>{
-        console.log(url);
-        res.send('successfully saved');
+        url.generateToken().then((token)=>{
+            res.header('x-auth', token).send(url);
+        })
+        .catch((err)=>{
+            res.send('this is error1, '+err);
+        })
     })
     .catch((err)=>{
         console.log(err);
@@ -69,10 +72,24 @@ router.delete('/:id',validateId, (req, res)=>{
 })
 
 //update a particular url, put, localhost:4000/urls/:id
+//Replaces complete/all fields of the url object with given id
 router.put('/:id', validateId, (req, res) =>{
     let id = req.params.id;
     let body = req.body;
-    Url.findOneAndUpdate({_id: id}, { $set: body}, {new: true, runValidators: true})
+    Url.findOneAndUpdate({_id: id}, { $set: body}, {upsert: true, setDefaultsOnInsert: true, new: true, runValidators: true})
+    .then((url)=>{
+         res.send({
+            notice: 'Successfully updated',
+            url
+        })
+    })
+} )
+
+//update a part of the url object with given data
+router.patch('/:id', validateId, (req, res)=>{
+    let id = req.params.id;
+    let body = req.body;
+    Url.findOneAndUpdate({_id: id}, { $set: body},{ new: true, runValidators: true})
     .then((url)=>{
         if(url){
             res.send({
@@ -85,7 +102,7 @@ router.put('/:id', validateId, (req, res) =>{
             })
         }
     })
-} )
+})
 
 //Return all urls that match the specified tag
 // get, localhost:4000/urls/tags/:name
