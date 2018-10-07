@@ -1,8 +1,26 @@
 const mongoose = require('mongoose');
 const validator = require('validator');
 const shorthash = require('shorthash');
-const jwt = require('jsonwebtoken');
 const Schema = mongoose.Schema;
+
+const clickSchema = new Schema({
+    clickedDateTime: {
+        type: Date,
+        default:  Date.now()
+    },
+    ipAddress:{
+        type: String
+    },
+    browserName:{
+        type: String
+    },
+    OSType:{
+        type: String
+    },
+    deviceType: {
+        type: String
+    }
+})
 
 let urlSchema = new Schema({
     title:{
@@ -27,39 +45,19 @@ let urlSchema = new Schema({
         required: true
     },
     hashedUrl:{
-        type: String,
-        required: true
+        type: String
     },
     createdDate:{
         type: Date,
         default: Date.now()
     },
-    tokens:[{
-        token:{
-            type: String
-        }
-    }]
+    clicks: [clickSchema]
 });
-
-urlSchema.pre('validate', function(next){
-    if (this.isNew){
-        let url = this.originalUrl;
-        this.hashedUrl = shorthash.unique(url);
-    }
-    next();
-});
-
-urlSchema.methods.generateToken = function(next){
+urlSchema.pre('save', function(next){
     let url = this;
-    let tokenData = {
-        _id: url._id
-    }
-    let token  = jwt.sign(tokenData, 'supersecret');
-    url.tokens.push({token});
-    return url.save().then(()=>{
-        return token;
-    })
-}
+    url.hashedUrl = shorthash.unique(url.originalUrl);
+    next();
+})
 let Url  = mongoose.model('Url', urlSchema);
 module.exports = {
     Url
